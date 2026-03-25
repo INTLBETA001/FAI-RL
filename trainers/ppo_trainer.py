@@ -366,6 +366,7 @@ class PPOTrainer(BaseTrainer):
             value_model=self.value_model,
             train_dataset=self.train_dataset,
             eval_dataset=self.eval_dataset,
+            callbacks=self.build_callbacks(),
         )
 
         self.logger.info("PPO trainer initialized")

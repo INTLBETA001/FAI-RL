@@ -184,6 +184,22 @@ class WandbConfig:
 
 
 @dataclass
+class S3Config:
+    """Configuration for uploading checkpoints to S3."""
+    enabled: bool = False
+    bucket: str = ""
+    prefix: str = ""
+    region: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    upload_final_model: bool = True
+    upload_checkpoints: bool = True
+    delete_local_after_upload: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+
+
+@dataclass
 class InferenceConfig:
     """Configuration for inference settings."""
     # Model configuration - either model_paths (for local models) or model (for API models)
@@ -264,6 +280,7 @@ class ExperimentConfig:
     data: DataConfig
     training: TrainingConfig
     wandb: WandbConfig
+    s3: S3Config = field(default_factory=S3Config)
     
     @classmethod
     def from_yaml(cls, config_path: str) -> 'ExperimentConfig':
@@ -283,6 +300,7 @@ class ExperimentConfig:
             data=DataConfig(**data_config),
             training=TrainingConfig(**config_dict['training']),
             wandb=WandbConfig(**config_dict.get('wandb', {})),
+            s3=S3Config(**config_dict.get('s3', {})),
         )
     
     @classmethod
@@ -318,6 +336,7 @@ class ExperimentConfig:
             'data': self.data.to_dict(),
             'training': self.training.to_dict(),
             'wandb': self.wandb.to_dict(),
+            's3': self.s3.to_dict(),
         }
         
         with open(output_path, 'w') as f:

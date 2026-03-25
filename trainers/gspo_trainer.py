@@ -232,6 +232,7 @@ class GSPOTrainer(BaseTrainer):
             reward_funcs=reward_funcs,
             args=training_args,
             train_dataset=self.train_dataset,
+            callbacks=self.build_callbacks(),
         )
 
         self.logger.info("GSPO trainer initialized")

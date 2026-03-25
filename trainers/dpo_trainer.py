@@ -205,6 +205,7 @@ class DPOTrainer(BaseTrainer):
             args=training_args,
             processing_class=self.tokenizer,
             train_dataset=self.train_dataset,
+            callbacks=self.build_callbacks(),
         )
 
         self.logger.info("DPO trainer initialized")
