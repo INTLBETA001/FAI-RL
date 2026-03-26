@@ -342,6 +342,9 @@ python -m build
 
 # Upload to PyPI (requires credentials)
 python -m twine upload dist/*
+
+# Or upload to test PyPi (requires credentials)
+python -m twine upload --repository testpypi dist/*
 ```
 
 </details>
