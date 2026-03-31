@@ -338,27 +338,6 @@ s3://your-s3-bucket/
         └── ...
 ```
 
-### Using with S3-Compatible Stores
-
-To use MinIO or another S3-compatible endpoint, set `endpoint_url`:
-
-```yaml
-s3:
-  enabled: true
-  bucket: "my-bucket"
-  prefix: "experiments/run-01"
-  endpoint_url: "http://minio.internal:9000"
-```
-
-### Disabling S3 Upload
-
-S3 upload is disabled by default. To explicitly disable it in a recipe that already has the section:
-
-```yaml
-s3:
-  enabled: false
-```
-
 ## Memory Optimization
 
 FAI-RL provides multiple techniques for efficient training of large models on limited hardware:
