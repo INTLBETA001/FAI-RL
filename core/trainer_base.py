@@ -17,8 +17,9 @@ from .config import ExperimentConfig
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-    
+
 from utils.logging_utils import setup_logging, SafeLogger
+from utils.s3_utils import build_s3_callback
 from utils.device_utils import (
     get_device_type,
     is_cuda_available,
@@ -282,6 +283,18 @@ class BaseTrainer(ABC):
                 model.config.use_cache = False
             except Exception:
                 pass
+
+    def build_callbacks(self) -> list:
+        """Build trainer callbacks from config (e.g. S3 upload)."""
+        callbacks = []
+        s3_cb = build_s3_callback(self.config.s3)
+        if s3_cb is not None:
+            self.logger.info(
+                "S3 upload enabled -> s3://%s/%s",
+                self.config.s3.bucket, self.config.s3.prefix,
+            )
+            callbacks.append(s3_cb)
+        return callbacks
 
     @abstractmethod
     def setup_model(self):

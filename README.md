@@ -27,6 +27,7 @@ FAI-RL provides a unified, extensible framework for fine-tuning language models 
 - [Supported Methods](#supported-methods)
 - [Key Features](#key-features)
 - [Project Structure](#-project-structure)
+- [S3 Checkpoint Upload](#-s3-checkpoint-upload)
 - [Memory Optimization](#memory-optimization)
 - [System Requirements](#-system-requirements)
 - [License](#-license)
@@ -44,7 +45,7 @@ pip install FAI-RL[cuda] --extra-index-url https://download.pytorch.org/whl/cu11
 **For macOS (Apple Silicon or Intel):**
 
 ```bash
-pip install FAI-RL==0.1.13
+pip install FAI-RL==0.1.14
 ```
 
 ### Clone the Repository for Configuration Recipes
@@ -161,6 +162,7 @@ Additional features supported across all algorithms:
 - ✅ Gradient checkpointing for memory efficiency
 - ✅ Custom reward functions and dataset templates
 - ✅ Weights & Biases integration for experiment tracking
+- ✅ Automatic S3 checkpoint upload (supports S3-compatible stores)
 
 ## Key Features
 
@@ -258,11 +260,82 @@ FAI-RL/
 ├── configs/                   # DeepSpeed configurations
 │   └── deepspeed/             # ZeRO-3 configs for 1/2/4/8 GPUs
 ├── utils/                     # Shared utilities
+│   ├── s3_utils.py            # S3 checkpoint upload callback
 │   └── hosted_llm_config.py   # Custom API endpoint configuration
 └── [auto-generated]
     ├── models/                # Trained model checkpoints
     ├── outputs/               # Inference and evaluation results
     └── logs/                  # Training logs
+```
+
+## ☁️ S3 Checkpoint Upload
+
+FAI-RL can automatically upload checkpoints and the final fine-tuned model to Amazon S3 (or any S3-compatible store such as MinIO). Uploads run in background threads so they never block training.
+
+### Prerequisites
+
+Configure AWS credentials using any standard method (environment variables, `~/.aws/credentials`, IAM role, etc.):
+
+```bash
+# Option 1: Environment variables
+export AWS_ACCESS_KEY_ID="..."
+export AWS_SECRET_ACCESS_KEY="..."
+export AWS_DEFAULT_REGION="us-east-1"
+
+# Option 2: AWS CLI
+aws configure
+```
+
+### Configuration
+
+Add an `s3` section to your training recipe YAML:
+
+```yaml
+s3:
+  enabled: true                                          # Enable S3 upload
+  bucket: "your-s3-bucket"                               # S3 bucket name
+  prefix: "your-s3-prefix"                               # Key prefix (folder path inside bucket)
+  region: null                                           # AWS region (null = use default)
+  endpoint_url: null                                     # Custom S3-compatible endpoint (e.g. MinIO)
+  upload_checkpoints: true                               # Upload intermediate checkpoints (at every save_steps)
+  upload_final_model: true                               # Upload the final model at end of training
+  delete_local_after_upload: false                       # Delete local files after successful upload
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `enabled` | bool | `false` | Master switch for the S3 upload feature |
+| `bucket` | string | `""` | Target S3 bucket name (required when enabled) |
+| `prefix` | string | `""` | Key prefix under which all uploads are stored |
+| `region` | string | `null` | AWS region; falls back to `AWS_DEFAULT_REGION` or boto3 default |
+| `endpoint_url` | string | `null` | Custom endpoint for S3-compatible stores (e.g. `http://minio:9000`) |
+| `upload_checkpoints` | bool | `true` | Upload each intermediate checkpoint saved at `save_steps` intervals |
+| `upload_final_model` | bool | `true` | Upload the final model directory at the end of training |
+| `delete_local_after_upload` | bool | `false` | Remove local checkpoint directory after a successful upload |
+
+### How It Works
+
+1. **Intermediate checkpoints** -- When the trainer saves a checkpoint (every `training.save_steps` steps), the S3 callback uploads the entire checkpoint directory to `s3://<bucket>/<prefix>/checkpoint-<step>/` in a background thread.
+2. **Final model** -- At the end of training, the output directory is uploaded to `s3://<bucket>/<prefix>/final/`.
+3. **Non-blocking** -- All uploads happen on daemon threads. Training continues while files are being transferred. At the end of training, the callback waits for any remaining uploads to finish before the process exits.
+
+### S3 Upload Structure
+
+Given the example config above, the resulting S3 layout would be:
+
+```
+s3://your-s3-bucket/
+└── checkpoints/qwen3-4B-inst-dpo-lora-150k/
+    ├── checkpoint-100/
+    │   ├── adapter_config.json
+    │   ├── adapter_model.safetensors
+    │   └── ...
+    ├── checkpoint-200/
+    │   └── ...
+    └── final/
+        ├── adapter_config.json
+        ├── adapter_model.safetensors
+        └── ...
 ```
 
 ## Memory Optimization
@@ -342,6 +415,9 @@ python -m build
 
 # Upload to PyPI (requires credentials)
 python -m twine upload dist/*
+
+# Or upload to test PyPi (requires credentials)
+python -m twine upload --repository testpypi dist/*
 ```
 
 </details>
