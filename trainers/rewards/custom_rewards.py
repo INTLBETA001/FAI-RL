@@ -45,6 +45,7 @@ def custom_reward_func(completions: List[str], **kwargs) -> List[float]:
         # - Validate output format
         # - Score based on custom criteria
         _ = completion  # Placeholder use; replace with real scoring logic
+        _ = completion  # Placeholder use; replace with real scoring logic
         reward = 0.0  # Placeholder: currently returns 0.0
         rewards.append(reward)
     # =========================================
